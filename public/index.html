@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watch Party</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #ff8181 0%, #c54646 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 245, 245, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 900px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #ff8181, #c54646);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .room-setup {
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        input[type="text"] {
+            padding: 12px 20px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: white;
+            min-width: 200px;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            padding: 12px 24px;
+            background: linear-gradient(45deg, #ff8181, #c54646);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .video-container {
+            margin: 30px 0;
+            position: relative;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        video {
+            width: 100%;
+            max-width: 800px;
+            height: auto;
+            display: block;
+        }
+
+        .status {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+
+        .status.connected {
+            background: rgba(76, 175, 80, 0.1);
+            color: #2e7d32;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .status.disconnected {
+            background: rgba(244, 67, 54, 0.1);
+            color: #c62828;
+            border: 1px solid rgba(244, 67, 54, 0.3);
+        }
+
+        .status.waiting {
+            background: rgba(255, 152, 0, 0.1);
+            color: #ef6c00;
+            border: 1px solid rgba(255, 152, 0, 0.3);
+        }
+
+        .participants {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .participants h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .participant {
+            display: inline-block;
+            background: rgba(102, 126, 234, 0.1);
+            color: #333;
+            padding: 5px 12px;
+            margin: 3px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .sync-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(76, 175, 80, 0.9);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sync-indicator.show {
+            opacity: 1;
+        }
+
+        .last-action {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+            font-style: italic;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            .input-group {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            input[type="text"] {
+                width: 100%;
+                max-width: 300px;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍤 Watch Party</h1>
+        
+        <div id="roomSetup" class="room-setup">
+            <div class="input-group">
+                <input type="text" id="userNameInput" placeholder="Your name" maxlength="20">
+                <input type="text" id="roomInput" placeholder="Room name" maxlength="20">
+                <button onclick="joinRoom()" id="joinBtn">Join Room</button>
+            </div>
+        </div>
+
+        <div id="status" class="status waiting">
+            Enter your name and room name to get started
+        </div>
+
+        <div id="videoSection" class="hidden">
+            <div class="video-container">
+                <video id="video" controls preload="metadata">
+                    <source src="/video" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+                <div id="syncIndicator" class="sync-indicator">Synced!</div>
+            </div>
+
+            <div class="controls">
+                <button onclick="syncPlay()">🎬 Play</button>
+                <button onclick="syncPause()">⏸️ Pause</button>
+                <button onclick="syncRestart()">🔄 Restart</button>
+            </div>
+
+            <div id="lastAction" class="last-action"></div>
+        </div>
+
+        <div id="participants" class="participants hidden">
+            <h3>Participants</h3>
+            <div id="participantList"></div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        class WatchParty {
+            constructor() {
+                this.socket = null;
+                this.room = null;
+                this.userName = null;
+                this.participants = [];
+                this.video = document.getElementById('video');
+                this.isSyncing = false;
+                this.syncThreshold = 1.0; // 1 second threshold
+                this.isConnected = false;
+                
+                this.setupVideoListeners();
+            }
+
+            connect() {
+                this.socket = io();
+                
+                this.socket.on('connect', () => {
+                    console.log('Connected to server');
+                    this.isConnected = true;
+                });
+
+                this.socket.on('disconnect', () => {
+                    console.log('Disconnected from server');
+                    this.isConnected = false;
+                    this.updateStatus('Disconnected from server', 'disconnected');
+                });
+
+                this.socket.on('room-state', (data) => {
+                    this.participants = data.participants;
+                    this.updateParticipantList();
+                    this.showVideoSection();
+                    this.showParticipants();
+                    
+                    // Sync with current room state
+                    const { videoState } = data;
+                    if (videoState.isPlaying) {
+                        // Calculate current time based on when it was last updated
+                        const timePassed = (Date.now() - videoState.lastUpdate) / 1000;
+                        const currentTime = videoState.currentTime + timePassed;
+                        this.syncPlay(currentTime, false);
+                    } else {
+                        this.syncPause(videoState.currentTime, false);
+                    }
+                });
+
+                this.socket.on('user-joined', (data) => {
+                    this.participants = data.participants;
+                    this.updateParticipantList();
+                    this.showLastAction(`${data.userName} joined the room`);
+                });
+
+                this.socket.on('user-left', (data) => {
+                    this.participants = data.participants;
+                    this.updateParticipantList();
+                    this.showLastAction(`${data.userName} left the room`);
+                });
+
+                this.socket.on('sync-video', (data) => {
+                    this.showSyncIndicator();
+                    this.showLastAction(`${data.from} ${data.action}ed the video`);
+                    
+                    switch (data.action) {
+                        case 'play':
+                            // Calculate time difference due to network delay
+                            const networkDelay = (Date.now() - data.timestamp) / 1000;
+                            const adjustedTime = data.time + networkDelay;
+                            this.syncPlay(adjustedTime, false);
+                            break;
+                        case 'pause':
+                            this.syncPause(data.time, false);
+                            break;
+                        case 'seek':
+                            this.syncSeek(data.time, false);
+                            break;
+                    }
+                });
+            }
+
+            setupVideoListeners() {
+                this.video.addEventListener('play', () => {
+                    if (!this.isSyncing && this.socket && this.isConnected) {
+                        this.sendVideoAction('play', this.video.currentTime);
+                    }
+                });
+
+                this.video.addEventListener('pause', () => {
+                    if (!this.isSyncing && this.socket && this.isConnected) {
+                        this.sendVideoAction('pause', this.video.currentTime);
+                    }
+                });
+
+                this.video.addEventListener('seeked', () => {
+                    if (!this.isSyncing && this.socket && this.isConnected) {
+                        this.sendVideoAction('seek', this.video.currentTime);
+                    }
+                });
+
+                this.video.addEventListener('loadedmetadata', () => {
+                    console.log('Video loaded successfully');
+                });
+
+                this.video.addEventListener('error', (e) => {
+                    console.error('Video error:', e);
+                    this.updateStatus('Error loading video', 'disconnected');
+                });
+            }
+
+            joinRoom(roomName, userName) {
+                this.room = roomName;
+                this.userName = userName;
+                
+                if (!this.socket) {
+                    this.connect();
+                }
+                
+                this.socket.emit('join-room', {
+                    roomName: roomName,
+                    userName: userName
+                });
+                
+                this.updateStatus(`Joined room ${roomName}: as ${userName}`, 'connected');
+            }
+
+            sendVideoAction(action, time) {
+                if (this.socket && this.isConnected) {
+                    this.socket.emit('video-action', {
+                        action: action,
+                        time: time,
+                        roomName: this.room
+                    });
+                }
+            }
+
+            syncPlay(time = null, broadcast = true) {
+                this.isSyncing = true;
+                
+                if (time !== null && Math.abs(this.video.currentTime - time) > this.syncThreshold) {
+                    this.video.currentTime = time;
+                }
+                
+                const playPromise = this.video.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        this.isSyncing = false;
+                        if (broadcast) {
+                            this.sendVideoAction('play', this.video.currentTime);
+                        }
+                    }).catch(() => {
+                        this.isSyncing = false;
+                    });
+                } else {
+                    this.isSyncing = false;
+                }
+            }
+
+            syncPause(time = null, broadcast = true) {
+                this.isSyncing = true;
+                
+                if (time !== null && Math.abs(this.video.currentTime - time) > this.syncThreshold) {
+                    this.video.currentTime = time;
+                }
+                
+                this.video.pause();
+                
+                setTimeout(() => {
+                    this.isSyncing = false;
+                    if (broadcast) {
+                        this.sendVideoAction('pause', this.video.currentTime);
+                    }
+                }, 50);
+            }
+
+            syncSeek(time, broadcast = true) {
+                this.isSyncing = true;
+                this.video.currentTime = time;
+                
+                setTimeout(() => {
+                    this.isSyncing = false;
+                    if (broadcast) {
+                        this.sendVideoAction('seek', time);
+                    }
+                }, 100);
+            }
+
+            syncRestart() {
+                this.syncSeek(0);
+                setTimeout(() => {
+                    this.syncPlay(0);
+                }, 200);
+            }
+
+            showVideoSection() {
+                document.getElementById('videoSection').classList.remove('hidden');
+            }
+
+            showParticipants() {
+                document.getElementById('participants').classList.remove('hidden');
+            }
+
+            updateStatus(message, type) {
+                const status = document.getElementById('status');
+                status.textContent = message;
+                status.className = `status ${type}`;
+            }
+
+            updateParticipantList() {
+                const list = document.getElementById('participantList');
+                list.innerHTML = '';
+                this.participants.forEach(participant => {
+                    const span = document.createElement('span');
+                    span.className = 'participant';
+                    span.textContent = participant.name;
+                    list.appendChild(span);
+                });
+            }
+
+            showSyncIndicator() {
+                const indicator = document.getElementById('syncIndicator');
+                indicator.classList.add('show');
+                setTimeout(() => {
+                    indicator.classList.remove('show');
+                }, 1500);
+            }
+
+            showLastAction(message) {
+                const actionDiv = document.getElementById('lastAction');
+                actionDiv.textContent = message;
+                setTimeout(() => {
+                    actionDiv.textContent = '';
+                }, 3000);
+            }
+        }
+
+        // Global instance
+        const watchParty = new WatchParty();
+
+        // Global functions for UI
+        function joinRoom() {
+            const userName = document.getElementById('userNameInput').value.trim();
+            const roomName = document.getElementById('roomInput').value.trim();
+            
+            if (!userName) {
+                alert('Please enter your name');
+                return;
+            }
+            
+            if (!roomName) {
+                alert('Please enter a room name');
+                return;
+            }
+            
+            // Hide setup form
+            document.getElementById('roomSetup').style.display = 'none';
+            document.getElementById('joinBtn').disabled = true;
+            
+            watchParty.joinRoom(roomName, userName);
+        }
+
+        function syncPlay() {
+            watchParty.syncPlay();
+        }
+
+        function syncPause() {
+            watchParty.syncPause();
+        }
+
+        function syncRestart() {
+            watchParty.syncRestart();
+        }
+
+        // Allow Enter key to join room
+        document.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !document.getElementById('roomSetup').classList.contains('hidden')) {
+                joinRoom();
+            }
+        });
+    </script>
+</body>
+</html>
